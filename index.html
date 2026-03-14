@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: sans-serif;
+      background: #f4f4f4;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 32px 24px;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.1);
+    }
+    h2 { font-size: 22px; margin-bottom: 24px; color: #111; text-align: center; }
+    label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; margin-top: 16px; }
+    select, input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 12px;
+      color: white;
+    }
+    .btn-login  { background: #2563eb; margin-top: 24px; }
+    .btn-logout { background: #dc2626; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #status {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      text-align: center;
+      display: none;
+    }
+    .ok  { background: #dcfce7; color: #166534; }
+    .err { background: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h2>Attendance</h2>
+
+  <label>Your name</label>
+  <select id="name">
+    <option value="">-- Select --</option>
+    <option>Ravi</option>    <!-- change to your employees' names -->
+    <option>Priya</option>
+    <option>Arjun</option>
+    <option>You</option>
+  </select>
+
+  <label>PIN</label>
+  <input type="password" id="pin" maxlength="6" placeholder="Enter your PIN">
+
+  <button class="btn btn-login"  onclick="submit('Login')">Login</button>
+  <button class="btn btn-logout" onclick="submit('Logout')">Logout</button>
+
+  <div id="status"></div>
+</div>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-Gh9YmMF5h-PLXRuSESzkKvgSEJquxwM-dW2Sfv3F4yIw7-sLRBGfSeQ39LG9hlpBbg/exec"; // 👈 paste your URL here
+
+async function submit(event) {
+  const name = document.getElementById("name").value;
+  const pin  = document.getElementById("pin").value;
+  const status = document.getElementById("status");
+
+  if (!name || !pin) {
+    showStatus("Please select your name and enter PIN", "err");
+    return;
+  }
+
+  showStatus("Getting your location...", "ok");
+  document.querySelectorAll(".btn").forEach(b => b.disabled = true);
+
+  // Get GPS location first
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    try {
+      const payload = {
+        name, pin, event,
+        lat:      pos.coords.latitude,
+        lng:      pos.coords.longitude,
+        accuracy: Math.round(pos.coords.accuracy),
+        device:   navigator.userAgent.includes("iPhone") ? "iPhone" : "Android"
+      };
+
+      const res  = await fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        showStatus(`${event} recorded ✓`, "ok");
+        document.getElementById("pin").value = "";
+      } else {
+        showStatus(data.message || "Something went wrong", "err");
+      }
+    } catch(e) {
+      showStatus("Network error. Try again.", "err");
+    }
+    document.querySelectorAll(".btn").forEach(b => b.disabled = false);
+
+  }, (err) => {
+    showStatus("Location access denied — please allow location", "err");
+    document.querySelectorAll(".btn").forEach(b => b.disabled = false);
+  }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById("status");
+  el.textContent = msg;
+  el.className = type;
+  el.style.display = "block";
+}
+</script>
+</body>
+</html>
